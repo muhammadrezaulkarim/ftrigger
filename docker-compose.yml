@@ -18,7 +18,7 @@ services:
       - functions
 
   ftrigger-kafka:
-    image: mrkcse/ftrigger:master
+    image: mrkcse/ftrigger:latest
     command: kafka-trigger
     networks:
       - functions
