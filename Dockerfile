@@ -1,4 +1,4 @@
-FROM mrkcse/python-librdkafka:3.6.2-0.11.0
+FROM mrkcse/python-librdkafka
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
