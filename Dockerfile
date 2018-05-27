@@ -1,4 +1,4 @@
-FROM mrkcse/python-librdkafka
+FROM mrkcse/docker-python-librdkafka
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
