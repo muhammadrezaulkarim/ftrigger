@@ -1,4 +1,4 @@
-FROM ucalgary/python-librdkafka:3.6.2-0.11.0
+FROM mrkcse/python-librdkafka:3.6.2-0.11.0
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
@@ -20,4 +20,4 @@ RUN apk add --no-cache --virtual .build-deps \
 LABEL maintainer="King Chung Huang <kchuang@ucalgary.ca>" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.name="Function Triggers" \
-      org.label-schema.vcs-url="https://github.com/ucalgary/ftrigger"
+      org.label-schema.vcs-url="https://github.com/muhammadrezaulkarim/ftrigger"
