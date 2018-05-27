@@ -18,7 +18,7 @@ services:
       - functions
 
   ftrigger-kafka:
-    image: ucalgary/ftrigger:master
+    image: mrkcse/ftrigger:master
     command: kafka-trigger
     networks:
       - functions
