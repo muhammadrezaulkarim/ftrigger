@@ -20,7 +20,7 @@ setup(
     description='Triggers for FaaS functions',
     author='King Chung Huang',
     author_email='kchuang@ucalgary.ca',
-    url='https://github.com/ucalgary/ftrigger',
+    url='https://github.com/muhammadrezaulkarim/ftrigger',
     packages=find_packages(),
     package_data={
     },
