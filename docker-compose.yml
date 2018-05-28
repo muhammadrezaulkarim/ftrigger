@@ -82,6 +82,8 @@ services:
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_ADVERTISED_HOST_NAME=kafka
+      - KAFKA_RESERVED_BROKER_MAX_ID= 999999999
     networks:
       - streaming
     deploy:
