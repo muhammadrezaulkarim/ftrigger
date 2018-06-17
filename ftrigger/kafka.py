@@ -13,6 +13,7 @@ from confluent_kafka import Consumer
 from .trigger import Functions
 
 
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -65,14 +66,23 @@ class KafkaTrigger(object):
                 topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
+            
+                log.debug('Processing a message:')
+                log.debug('Topic:' + str(topic))
                 try:
                     key = message.key().decode('utf-8')
+                    log.debug('Key:' + str(key))
                 except:
+                    log.debug('Key could not be decoded.')
                     pass
                 try:
                     value = json.loads(value)
+                    log.debug('value:' + str(value))
                 except:
+                    log.debug('value could not be decoded.')
                     pass
+                
+                             
                 for function in callbacks[topic]:
                     jq_filter = functions.arguments(function).get('filter')
                     try:
@@ -80,7 +90,10 @@ class KafkaTrigger(object):
                             continue
                     except:
                         log.error(f'Could not filter message value with {jq_filter}')
+                    
                     data = self.function_data(function, topic, key, value)
+                    log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                    
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
 
     def function_data(self, function, topic, key, value):
