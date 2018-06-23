@@ -28,7 +28,7 @@ class OpenFassKafkaConsumer(threading.Thread):
       self.partition_no = partition_no
       # Reset the config 
       self.config = {
-            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
             'default.topic.config': {
                 'auto.offset.reset': 'largest',
