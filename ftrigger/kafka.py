@@ -44,7 +44,7 @@ class OpenFassKafkaConsumer(threading.Thread):
         else:
             return key
         
-    def run(self):
+   def run(self):
         consumer = Consumer(self.config)
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
