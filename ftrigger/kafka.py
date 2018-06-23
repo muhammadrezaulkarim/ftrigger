@@ -3,6 +3,7 @@ import collections
 import logging
 import os
 import threading
+import time
 
 try:
     import ujson as json
@@ -139,9 +140,10 @@ class KafkaTrigger(object):
          
          for t in consumer_threads:
             t.start()
+            t.join()
+                                          
          
-         while True:
-            time.sleep(10)
+         print('KafkaTrigger main thread terminated.')
 
 def main():
     trigger = KafkaTrigger()
