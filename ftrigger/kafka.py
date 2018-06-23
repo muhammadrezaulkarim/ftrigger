@@ -9,7 +9,7 @@ try:
 except:
     import json
 import pyjq
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, TopicPartition
 
 from .trigger import Functions
 
