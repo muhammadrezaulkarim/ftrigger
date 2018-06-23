@@ -22,12 +22,10 @@ class OpenFassKafkaConsumer(threading.Thread):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       threading.Thread.__init__(self)
       self.thread_id = thread_id
-     
       # instantiate functions
       self.functions = Functions(name='kafka')
       self.topic_name = topic_name
       self.partition_no = partition_no
-      
       # Reset the config 
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
@@ -37,10 +35,16 @@ class OpenFassKafkaConsumer(threading.Thread):
                 'auto.commit.interval.ms': 5000
             }
       }
-      
       log.debug('Instantiating thread: ' + self.thread_id)
- 
-   def run(self):
+   def function_data(self, function, topic, key, value):
+        data_opt = self.functions.arguments(function).get('data', 'key')
+
+        if data_opt == 'key-value':
+            return json.dumps({'key': key, 'value': value})
+        else:
+            return key
+        
+    def run(self):
         consumer = Consumer(self.config)
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
@@ -108,14 +112,6 @@ class OpenFassKafkaConsumer(threading.Thread):
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-
-    def function_data(self, function, topic, key, value):
-        data_opt = self.functions.arguments(function).get('data', 'key')
-
-        if data_opt == 'key-value':
-            return json.dumps({'key': key, 'value': value})
-        else:
-            return key
 
 class KafkaTrigger(object):
 
