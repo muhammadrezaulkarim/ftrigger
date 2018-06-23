@@ -22,21 +22,35 @@ class OpenFassKafkaConsumer(threading.Thread):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       threading.Thread.__init__(self)
       self.thread_id = thread_id
-      self.functions = functions
+     
+      # instantiate functions
+      self.functions = Functions(name='kafka')
       self.topic_name = topic_name
       self.partition_no = partition_no
-      self.config = config
-      self.config['group.id'] = 'group' + topic_name
+      
+      # Reset the config 
+      self.config = {
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
+            'group.id': 'group' + topic_name,
+            'default.topic.config': {
+                'auto.offset.reset': 'largest',
+                'auto.commit.interval.ms': 5000
+            }
+      }
+      
+      log.debug('Instantiating thread: ' + self.thread_id)
  
    def run(self):
         consumer = Consumer(self.config)
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
+        log.debug('Executing a consumer with ID: ' + self.thread_id)
+        
         callbacks = collections.defaultdict(list)
         functions = self.functions
 
         def close():
-            log.info('Closing consumer')
+            log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
 
@@ -55,7 +69,7 @@ class OpenFassKafkaConsumer(threading.Thread):
                 interested_topics = set(callbacks.keys())
 
                 if existing_topics.symmetric_difference(interested_topics):
-                    log.debug(f'Subscribing to {interested_topics}')
+                    log.debug(f'Subscribing to {interested_topics} in thread:' +  self.thread_id)
                     consumer.subscribe(list(interested_topics))
 
             message = consumer.poll(timeout=functions.refresh_interval)
@@ -66,19 +80,19 @@ class OpenFassKafkaConsumer(threading.Thread):
                                     message.key(), \
                                     message.value()
             
-                log.debug('Processing a message:')
-                log.debug('Topic:' + str(topic))
+                log.debug('Processing a message in thread: ' +  self.thread_id)
+                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                 try:
                     key = message.key().decode('utf-8')
-                    log.debug('Key:' + str(key))
+                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Key could not be decoded.')
+                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
                     pass
                 try:
                     value = json.loads(value)
-                    log.debug('value:' + str(value))
+                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('value could not be decoded.')
+                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
                     pass
                 
                              
@@ -91,7 +105,7 @@ class OpenFassKafkaConsumer(threading.Thread):
                         log.error(f'Could not filter message value with {jq_filter}')
                     
                     data = self.function_data(function, topic, key, value)
-                    log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                    log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
 
@@ -124,9 +138,9 @@ class KafkaTrigger(object):
          consumer_threads = []
          
          for topic_name in topic_list:
-           for partition_no in range(no_of_paritions):                                
-             con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
-             consumer_threads.append(con_thread)
+           for partition_no in range(no_of_paritions):    
+              con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
+              consumer_threads.append(con_thread)
          
          for t in consumer_threads:
             t.start()
