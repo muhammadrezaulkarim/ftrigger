@@ -2,6 +2,7 @@ import atexit
 import collections
 import logging
 import os
+import threading
 
 try:
     import ujson as json
@@ -17,22 +18,20 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-class KafkaTrigger(object):
-
-    def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
-                 kafka='kafka:9092'):
-        self.functions = Functions(name='kafka')
-        self.config = {
-            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
-            'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
-            'default.topic.config': {
-                'auto.offset.reset': 'largest',
-                'auto.commit.interval.ms': 5000
-            }
-        }
-
-    def run(self):
+class OpenFassKafkaConsumer(threading.Thread):
+   def __init__(self, thread_id, config, functions, topic_name, partition_no):
+      threading.Thread.__init__(self)
+      self.thread_id = thread_id
+      self.functions = functions
+      self.topic_name = topic_name
+      self.partition_no = partition_no
+      self.config = config
+      self.config['group.id'] = 'group' + topic_name
+ 
+   def run(self):
         consumer = Consumer(self.config)
+        consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
+        
         callbacks = collections.defaultdict(list)
         functions = self.functions
 
@@ -104,6 +103,36 @@ class KafkaTrigger(object):
         else:
             return key
 
+class KafkaTrigger(object):
+
+    def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
+                 kafka='kafka:9092'):
+        self.config = {
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
+            'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
+            'default.topic.config': {
+                'auto.offset.reset': 'largest',
+                'auto.commit.interval.ms': 5000
+            }
+        }
+       
+        self.functions = Functions(name='kafka')
+    
+    def run(self):
+         topic_list = ['mrkcse.test']
+         no_of_paritions = 5
+         consumer_threads = []
+         
+         for topic_name in topic_list:
+           for partition_no in range(no_of_paritions):                                
+             con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
+             consumer_threads.append(con_thread)
+         
+         for t in consumer_threads:
+            t.start()
+         
+         while True:
+            time.sleep(10)
 
 def main():
     trigger = KafkaTrigger()
