@@ -130,7 +130,7 @@ class KafkaTrigger(object):
     
     def run(self):
          topic_list = ['mrkcse.test']
-         no_of_paritions = 5
+         no_of_paritions = 10
          consumer_threads = []
          
          for topic_name in topic_list:
