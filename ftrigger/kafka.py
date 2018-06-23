@@ -66,11 +66,11 @@ class OpenFassKafkaConsumer(threading.Thread):
                 for f in remove:
                     callbacks[functions.arguments(f).get('topic')].remove(f)
 
-                interested_topics = set(callbacks.keys())
+                #interested_topics = set(callbacks.keys())
 
-                if existing_topics.symmetric_difference(interested_topics):
-                    log.debug(f'Subscribing to {interested_topics} in thread:' +  self.thread_id)
-                    consumer.subscribe(list(interested_topics))
+                #if existing_topics.symmetric_difference(interested_topics):
+                    #log.debug(f'Subscribing to {interested_topics} in thread:' +  self.thread_id)
+                    #consumer.subscribe(list(interested_topics))
 
             message = consumer.poll(timeout=functions.refresh_interval)
             if not message:
