@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 class OpenFassKafkaConsumer(threading.Thread):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       threading.Thread.__init__(self)
+      self.setDaemon(True)
       self.thread_id = thread_id
       # instantiate functions
       self.functions = Functions(name='kafka')
@@ -159,7 +160,7 @@ class KafkaTrigger(object):
              
              for t in consumer_threads:
                 t.start()
-                t.join()
+                #t.join()
 
 def main():
     trigger = KafkaTrigger()
