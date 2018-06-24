@@ -163,7 +163,7 @@ class KafkaTrigger(object):
              
              for t in consumer_threads:
                 t.start()
-                t.join()
+                #t.join()
 
 def main():
     trigger = KafkaTrigger()
