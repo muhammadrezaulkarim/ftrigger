@@ -67,7 +67,7 @@ class OpenFassKafkaConsumer(threading.Thread):
                         callbacks[self.topic_name].append(f)
                 
                   for f in remove:
-                     if functions.arguments(f).get('topic') in callbacks[self.topic_name]:
+                     if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=functions.refresh_interval)
