@@ -129,21 +129,40 @@ class KafkaTrigger(object):
         }
     
     def run(self):
-         topic_list = ['mrkcse.test']
+         topic_list_with_consumers = []
          no_of_paritions = 10
-         consumer_threads = []
-         
-         for topic_name in topic_list:
-           for partition_no in range(no_of_paritions):    
-              con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
-              consumer_threads.append(con_thread)
-         
-         for t in consumer_threads:
-            t.start()
-            t.join()
-                                          
-         
-         print('KafkaTrigger main thread terminated.')
+
+         callbacks = collections.defaultdict(list)
+         functions = self.functions
+                                           
+         while True:
+             add, update, remove = functions.refresh()
+             existing_topics = set(callbacks.keys())
+             new_candidate_topics = []
+             consumer_threads = []
+             
+             for topic in existing_topics:
+                 if topic not in topic_list_with_consumers:
+                    new_candidate_topics.append(topic)
+             
+             # if new functions added
+             if add:
+                 for f in add:
+                     if functions.arguments(f).get('topic') not in topic_list_with_consumers:
+                         new_candidate_topics.append(topic)
+             
+             for topic_name in new_candidate_topics:
+               for partition_no in range(no_of_paritions):    
+                  con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
+                  consumer_threads.append(con_thread)
+               
+               topic_list_with_consumers.append(topic_name)
+             
+             print(topic_list_with_consumers)
+             
+             for t in consumer_threads:
+                t.start()
+                t.join()
 
 def main():
     trigger = KafkaTrigger()
