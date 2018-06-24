@@ -143,7 +143,8 @@ class KafkaTrigger(object):
                  for f in add:
                      if functions.arguments(f).get('topic') not in topic_list_with_consumers:
                          new_candidate_topics.append(functions.arguments(f).get('topic'))
-             
+                                           
+             new_candidate_topics = set(new_candidate_topics)
              for topic_name in new_candidate_topics:
                for partition_no in range(no_of_paritions):    
                   con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
@@ -151,7 +152,7 @@ class KafkaTrigger(object):
                
                topic_list_with_consumers.append(topic_name)
              
-             print(topic_list_with_consumers)
+             #print(topic_list_with_consumers)
              
              for t in consumer_threads:
                 t.start()
