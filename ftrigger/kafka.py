@@ -71,6 +71,8 @@ class OpenFassKafkaConsumer(threading.Thread):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=functions.refresh_interval)
+            log.debug('Processing a message in thread: ' +  self.thread_id)
+            
             if not message:
                 log.debug('Empty message received')
             elif not message.error():
@@ -78,7 +80,7 @@ class OpenFassKafkaConsumer(threading.Thread):
                                     message.key(), \
                                     message.value()
             
-                log.debug('Processing a message in thread: ' +  self.thread_id)
+                
                 log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                 try:
                     key = message.key().decode('utf-8')
@@ -151,8 +153,9 @@ class KafkaTrigger(object):
                   consumer_threads.append(con_thread)
                
                topic_list_with_consumers.append(topic_name)
+               print(topic_list_with_consumers)
              
-             #print(topic_list_with_consumers)
+             
              
              for t in consumer_threads:
                 t.start()
