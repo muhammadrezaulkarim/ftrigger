@@ -61,21 +61,14 @@ class OpenFassKafkaConsumer(threading.Thread):
 
         while True:
             add, update, remove = functions.refresh()
-            if add or update or remove:
-                existing_topics = set(callbacks.keys())
-
-                for f in add:
-                    callbacks[functions.arguments(f).get('topic')].append(f)
-                for f in update:
-                    pass
-                for f in remove:
-                    callbacks[functions.arguments(f).get('topic')].remove(f)
-
-                #interested_topics = set(callbacks.keys())
-
-                #if existing_topics.symmetric_difference(interested_topics):
-                    #log.debug(f'Subscribing to {interested_topics} in thread:' +  self.thread_id)
-                    #consumer.subscribe(list(interested_topics))
+            if add or remove:
+                  for f in add:
+                     if functions.arguments(f).get('topic') not in callbacks[self.topic_name]:
+                        callbacks[self.topic_name].append(f)
+                
+                  for f in remove:
+                     if functions.arguments(f).get('topic') in callbacks[self.topic_name]:
+                         callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=functions.refresh_interval)
             if not message:
@@ -149,7 +142,7 @@ class KafkaTrigger(object):
              if add:
                  for f in add:
                      if functions.arguments(f).get('topic') not in topic_list_with_consumers:
-                         new_candidate_topics.append(topic)
+                         new_candidate_topics.append(functions.arguments(f).get('topic'))
              
              for topic_name in new_candidate_topics:
                for partition_no in range(no_of_paritions):    
