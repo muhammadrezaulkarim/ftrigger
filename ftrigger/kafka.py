@@ -35,10 +35,10 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': 500,
+            #'fetch.wait.max.ms': 500,
             'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
-                'auto.offset.reset': 'largest',
+                'auto.offset.reset': 'smallest',
                 'auto.commit.interval.ms': 5000
             }
       }
