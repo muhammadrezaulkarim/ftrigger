@@ -63,7 +63,7 @@ class OpenFassKafkaConsumer(threading.Thread):
             add, update, remove = functions.refresh()
             if add or remove:
                   for f in add:
-                     if functions.arguments(f).get('topic') not in callbacks[self.topic_name]:
+                     if f not in callbacks[self.topic_name]:
                         callbacks[self.topic_name].append(f)
                 
                   for f in remove:
