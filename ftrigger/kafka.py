@@ -43,6 +43,7 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
             }
       }
       log.debug('Instantiating thread: ' + self.thread_id)
+        
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
 
@@ -131,7 +132,7 @@ class KafkaTrigger(object):
     
     def run(self):
          topic_list_with_consumers = []
-         no_of_paritions = 10
+         no_of_paritions = 5
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
