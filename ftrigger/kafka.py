@@ -132,7 +132,7 @@ class KafkaTrigger(object):
     
     def run(self):
          topic_list_with_consumers = []
-         no_of_paritions = 5
+         no_of_paritions = 10
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
@@ -166,7 +166,7 @@ class KafkaTrigger(object):
              
              for t in consumer_threads:
                 t.start()
-                #t.join()
+                t.join()
 
 def main():
     trigger = KafkaTrigger()
