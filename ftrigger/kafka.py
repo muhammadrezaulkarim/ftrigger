@@ -20,15 +20,16 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-#class OpenFassKafkaConsumer(threading.Thread):
-class OpenFassKafkaConsumer(multiprocessing.Process):
+class OpenFassKafkaConsumer(threading.Thread):
+#class OpenFassKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
-      #threading.Thread.__init__(self)
-      multiprocessing.Process.__init__(self)
+      threading.Thread.__init__(self)
+      #multiprocessing.Process.__init__(self)
       #self.setDaemon(True)
       self.thread_id = thread_id
       # instantiate functions
       self.functions = Functions(name='kafka')
+      self.functions.refresh_interval=10
       self.topic_name = topic_name
       self.partition_no = partition_no
       # Reset the config 
@@ -121,6 +122,7 @@ class KafkaTrigger(object):
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
                  kafka='kafka:9092'):
         self.functions = Functions(name='kafka')
+        self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
             'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
@@ -136,6 +138,7 @@ class KafkaTrigger(object):
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
+         
                                            
          while True:
              add, update, remove = functions.refresh()
@@ -166,7 +169,7 @@ class KafkaTrigger(object):
              
              for t in consumer_threads:
                 t.start()
-                t.join()
+                #t.join()
 
 def main():
     trigger = KafkaTrigger()
