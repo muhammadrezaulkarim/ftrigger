@@ -20,11 +20,11 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-class OpenFassKafkaConsumer(threading.Thread):
-#class OpenFassKafkaConsumer(multiprocessing.Process):
+#class OpenFassKafkaConsumer(threading.Thread):
+class OpenFassKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
-      threading.Thread.__init__(self)
-      #multiprocessing.Process.__init__(self)
+      #threading.Thread.__init__(self)
+      multiprocessing.Process.__init__(self)
       #self.setDaemon(True)
       self.thread_id = thread_id
       # instantiate functions
