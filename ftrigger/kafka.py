@@ -29,7 +29,7 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
       self.thread_id = thread_id
       # instantiate functions
       self.functions = Functions(name='kafka')
-      self.functions.refresh_interval=10
+      self.functions.refresh_interval=100
       self.topic_name = topic_name
       self.partition_no = partition_no
       # Reset the config 
@@ -122,7 +122,7 @@ class KafkaTrigger(object):
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
                  kafka='kafka:9092'):
         self.functions = Functions(name='kafka')
-        self.functions.refresh_interval=10
+        self.functions.refresh_interval=100
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
             'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
