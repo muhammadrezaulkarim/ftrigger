@@ -120,7 +120,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-                    log.debug(datetime.datetime.now())
+                    #log.debug(datetime.datetime.now())
 
 class KafkaTrigger(object):
 
@@ -138,7 +138,7 @@ class KafkaTrigger(object):
         }
     
     def run(self):
-         log.debug(datetime.datetime.now())
+         #log.debug(datetime.datetime.now())
          topic_list_with_consumers = []
          no_of_paritions = 20
 
