@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+import datetime
 import multiprocessing
 
 try:
@@ -36,7 +37,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': 20,
+            'fetch.wait.max.ms': 10,
             #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': 'smallest',
@@ -82,7 +83,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
 
             message = consumer.poll(timeout=1.0)
             log.debug('Processing a message in thread: ' +  self.thread_id)
-            #log.info('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
                 log.debug('Empty message received')
@@ -118,7 +118,9 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     data = self.function_data(function, topic, key, value)
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
+                    
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                    log.debug(datetime.datetime.now())
 
 class KafkaTrigger(object):
 
@@ -136,6 +138,7 @@ class KafkaTrigger(object):
         }
     
     def run(self):
+         log.debug(datetime.datetime.now())
          topic_list_with_consumers = []
          no_of_paritions = 20
 
@@ -168,11 +171,10 @@ class KafkaTrigger(object):
                topic_list_with_consumers.append(topic_name)
                print(topic_list_with_consumers)
              
-             
+       
              
              for t in consumer_threads:
                 t.start()
-                #t.join()
 
 def main():
     trigger = KafkaTrigger()
