@@ -16,7 +16,7 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
@@ -44,6 +44,7 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
             }
       }
       log.debug('Instantiating thread: ' + self.thread_id)
+      log.info('Instantiating thread: ' + self.thread_id)
         
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
@@ -58,6 +59,7 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
+        log.info('Executing a consumer with ID: ' + self.thread_id)
         
         callbacks = collections.defaultdict(list)
         functions = self.functions
@@ -78,8 +80,9 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            message = consumer.poll(timeout=functions.refresh_interval)
+            message = consumer.poll(timeout=1.0)
             log.debug('Processing a message in thread: ' +  self.thread_id)
+            #log.info('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
                 log.debug('Empty message received')
