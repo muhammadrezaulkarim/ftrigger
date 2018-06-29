@@ -16,12 +16,12 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-#class OpenFassKafkaConsumer(threading.Thread):
-class OpenFassKafkaConsumer(multiprocessing.Process):
+#class OpenFaasKafkaConsumer(threading.Thread):
+class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
       multiprocessing.Process.__init__(self)
@@ -29,7 +29,7 @@ class OpenFassKafkaConsumer(multiprocessing.Process):
       self.thread_id = thread_id
       # instantiate functions
       self.functions = Functions(name='kafka')
-      self.functions.refresh_interval=100
+      self.functions.refresh_interval=10
       self.topic_name = topic_name
       self.partition_no = partition_no
       # Reset the config 
@@ -125,7 +125,7 @@ class KafkaTrigger(object):
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
                  kafka='kafka:9092'):
         self.functions = Functions(name='kafka')
-        self.functions.refresh_interval=100
+        self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
             'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
@@ -137,7 +137,7 @@ class KafkaTrigger(object):
     
     def run(self):
          topic_list_with_consumers = []
-         no_of_paritions = 10
+         no_of_paritions = 20
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
@@ -162,7 +162,7 @@ class KafkaTrigger(object):
              new_candidate_topics = set(new_candidate_topics)
              for topic_name in new_candidate_topics:
                for partition_no in range(no_of_paritions):    
-                  con_thread = OpenFassKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
+                  con_thread = OpenFaasKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
                   consumer_threads.append(con_thread)
                
                topic_list_with_consumers.append(topic_name)
