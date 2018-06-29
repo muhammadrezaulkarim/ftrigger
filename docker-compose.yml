@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.0'
 
 services:
   gateway:
@@ -42,8 +42,28 @@ services:
         constraints:
           - 'node.platform.os == linux'
       labels:
-        ftrigger.kafka: 'true'
-        ftrigger.kafka.topic: 'echo'
+        ftrigger.kafka: "true"
+        ftrigger.kafka.topic: "mrkcse.test"
+        ftrigger.kafka.data: "key-value"
+    networks:
+      - functions
+
+  sleepfunction:
+    image: mrkcse/myopenfasssimulator:latest
+    labels:
+      function: "true"
+    environment:
+      fprocess: "python handler.py"
+      no_proxy: "gateway"
+      https_proxy: $https_proxy
+    deploy:
+      placement:
+        constraints:
+          - 'node.platform.os == linux'
+      labels:
+        ftrigger.kafka: "true"
+        ftrigger.kafka.topic: "mrkcse.test"
+        ftrigger.kafka.data: "key-value"
     networks:
       - functions
 
@@ -83,7 +103,10 @@ services:
       - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - KAFKA_ADVERTISED_HOST_NAME=kafka
-      - KAFKA_RESERVED_BROKER_MAX_ID= 999999999
+      - KAFKA_RESERVED_BROKER_MAX_ID=999999999
+      - KAFKA_LOG_CLEANUP_POLICY=compact
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_NUM_PARTITIONS=10
     networks:
       - streaming
     deploy:
@@ -111,6 +134,7 @@ services:
          constraints:
           - 'node.role == manager'
           - 'node.platform.os == linux'
+  
   schema-registry:
     image: confluentinc/cp-schema-registry:4.0.0
     hostname: schema-registry
@@ -118,6 +142,9 @@ services:
       - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
       - SCHEMA_REGISTRY_HOST_NAME=schema-registry
       - SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081
+      - SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL=none
+    ports:
+      - '8081:8081'
     networks:
       - streaming
     deploy:
@@ -141,6 +168,43 @@ services:
            - 'node.role == manager'
            - 'node.platform.os == linux'
     
+  bottledwater:
+    image: mrkcse/bottledwater-pg:latest
+    environment:
+      - BOTTLED_WATER_ON_ERROR=exit
+      - BOTTLED_WATER_SKIP_SNAPSHOT=false
+      - BOTTLED_WATER_TOPIC_PREFIX=mrkcse
+      - BOTTLED_WATER_OUTPUT_FORMAT=json
+      - BOTTLED_WATER_BROKER=kafka:9092
+      - BOTTLED_WATER_POSTGRES=postgres://postgres:postgres@postgres:5432/postgres
+      - BOTTLED_WATER_SLOT=mrkcseslot
+    networks:
+      - streaming
+    depends_on:
+      - kafka
+      - zookeeper
+      - postgres
+    entrypoint: /usr/local/bin/bottledwater-docker-wrapper.sh
+
+    deploy:
+       replicas: 1
+       placement:
+         constraints:
+           - 'node.role == manager'
+           - 'node.platform.os == linux'
+  postgres:
+    image: mrkcse/bottledwater-pg:latest
+    hostname: postgres
+    ports:
+      - '5432:5432'
+
+    networks:
+      - streaming
+    deploy:
+       placement:
+         constraints:
+           - 'node.role == manager'
+           - 'node.platform.os == linux'
 networks:
   functions:
   streaming:
