@@ -17,8 +17,8 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
 
 
 #class OpenFaasKafkaConsumer(threading.Thread):
