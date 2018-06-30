@@ -60,7 +60,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
-        log.info('Executing a consumer with ID: ' + self.thread_id)
         
         callbacks = collections.defaultdict(list)
         functions = self.functions
@@ -82,28 +81,28 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=1.0)
-            log.debug('Processing a message in thread: ' +  self.thread_id)
+            #log.debug('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
-                log.debug('Empty message received')
+                #log.debug('Empty message received')
             elif not message.error():
                 topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
             
                 
-                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
+                #log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                 try:
                     key = message.key().decode('utf-8')
-                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
+                    #log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                    #log.debug('Key could not be decoded in thread: ' + self.thread_id )
                     pass
                 try:
                     value = json.loads(value)
-                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    #log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                    #log.debug('Value could not be decoded in thread: ' + self.thread_id )
                     pass
                 
                              
