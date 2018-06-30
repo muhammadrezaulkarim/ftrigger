@@ -17,8 +17,8 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 #class OpenFaasKafkaConsumer(threading.Thread):
@@ -60,6 +60,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
+        log.info('Executing a consumer with ID: ' + self.thread_id)
         
         callbacks = collections.defaultdict(list)
         functions = self.functions
@@ -81,10 +82,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=1.0)
-            #log.debug('Processing a message in thread: ' +  self.thread_id)
+            log.debug('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
-                #log.debug('Empty message received')
+                log.debug('Empty message received')
                 pass
             elif not message.error():
                 topic, key, value = message.topic(), \
@@ -92,18 +93,18 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                                     message.value()
             
                 
-                #log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
+                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                 try:
                     key = message.key().decode('utf-8')
-                    #log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
+                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                 except:
-                    #log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
                     pass
                 try:
                     value = json.loads(value)
-                    #log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
                 except:
-                    #log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
                     pass
                 
                              
@@ -117,10 +118,9 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     
                     data = self.function_data(function, topic, key, value)
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    
+                    log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-                    #log.debug(datetime.datetime.now())
 
 class KafkaTrigger(object):
 
@@ -138,7 +138,7 @@ class KafkaTrigger(object):
         }
     
     def run(self):
-         #log.debug(datetime.datetime.now())
+         
          topic_list_with_consumers = []
          no_of_paritions = 50
 
