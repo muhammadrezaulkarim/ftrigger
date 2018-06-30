@@ -140,7 +140,7 @@ class KafkaTrigger(object):
     def run(self):
          #log.debug(datetime.datetime.now())
          topic_list_with_consumers = []
-         no_of_paritions = 20
+         no_of_paritions = 50
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
