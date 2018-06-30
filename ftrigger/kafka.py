@@ -85,6 +85,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             
             if not message:
                 #log.debug('Empty message received')
+                pass
             elif not message.error():
                 topic, key, value = message.topic(), \
                                     message.key(), \
