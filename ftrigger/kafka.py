@@ -145,7 +145,7 @@ class KafkaTrigger(object):
         self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-            'group.id': 'group' + topic_name,
+            'group.id': 'group',
             'fetch.wait.max.ms': 20,
             #'debug': 'cgrp,topic,fetch,protocol',
             'auto.offset.reset': 'earliest',
