@@ -12,7 +12,7 @@ try:
 except:
     import json
 import pyjq
-from confluent_kafka import Consumer, TopicPartition
+from kafka import KafkaConsumer, KafkaProducer
 
 from .trigger import Functions
 
@@ -26,6 +26,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
       multiprocessing.Process.__init__(self)
+      self.stop_event = multiprocessing.Event()
       #self.setDaemon(True)
       self.thread_id = thread_id
       # instantiate functions
@@ -39,10 +40,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             'group.id': 'group' + topic_name,
             'fetch.wait.max.ms': 20,
             #'debug': 'cgrp,topic,fetch,protocol',
-            'default.topic.config': {
-                'auto.offset.reset': 'smallest',
-                'auto.commit.interval.ms': 5000
-            }
+            'auto.offset.reset': 'earliest',
+            'auto.commit.interval.ms': 5000,
+            'consumer.timeout.ms': 20
+            
       }
       log.debug('Instantiating thread: ' + self.thread_id)
       log.info('Instantiating thread: ' + self.thread_id)
@@ -55,8 +56,16 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         else:
             return key
         
+   def stop(self):
+        self.stop_event.set()  
+        
    def run(self):
-        consumer = Consumer(self.config)
+        consumer = KafkaConsumer(bootstrap_servers=self.config['bootstrap.servers'],
+                                 auto_offset_reset=self.config['auto.offset.reset'],
+                                 consumer_timeout_ms=self.config['consumer.timeout.ms'],
+                                 auto_commit_interval_ms=self.config['auto.commit.interval.ms'],
+                                 group_id=self.config['group.id'])
+        
         # if we want to manually assign parition to a consume, enable this line
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
@@ -84,46 +93,49 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            message = consumer.poll(timeout=1.0)
-            log.debug('Processing a message in thread: ' +  self.thread_id)
+            consumer.poll(timeout=1.0)
+            #message = consumer.poll(timeout=1.0)
             
-            if not message:
-                log.debug('Empty message received')
-                pass
-            elif not message.error():
-                topic, key, value = message.topic(), \
-                                    message.key(), \
-                                    message.value()
-            
-                
-                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
-                try:
-                    key = message.key().decode('utf-8')
-                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
+            for message in consumer:
+                log.debug('Processing a message in thread: ' +  self.thread_id)
+
+                if not message:
+                    log.debug('Empty message received')
                     pass
-                try:
-                    value = json.loads(value)
-                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
-                    pass
-                
-                             
-                for function in callbacks[topic]:
-                    jq_filter = functions.arguments(function).get('filter')
+                else:
+                    topic, key, value = message.topic, \
+                                        message.key, \
+                                        message.value
+
+
+                    log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                     try:
-                        if jq_filter and not pyjq.first(jq_filter, value):
-                            continue
+                        key = message.key.decode('utf-8')
+                        log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                     except:
-                        log.error(f'Could not filter message value with {jq_filter}')
-                    
-                    data = self.function_data(function, topic, key, value)
-                    log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    
-                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                        log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                        pass
+                    try:
+                        value = json.loads(value)
+                        log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    except:
+                        log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                        pass
+
+
+                    for function in callbacks[topic]:
+                        jq_filter = functions.arguments(function).get('filter')
+                        try:
+                            if jq_filter and not pyjq.first(jq_filter, value):
+                                continue
+                        except:
+                            log.error(f'Could not filter message value with {jq_filter}')
+
+                        data = self.function_data(function, topic, key, value)
+                        log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                        log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+
+                        functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
 
 class KafkaTrigger(object):
 
@@ -132,13 +144,15 @@ class KafkaTrigger(object):
         self.functions = Functions(name='kafka')
         self.functions.refresh_interval=10
         self.config = {
-            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
-            'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
-            'default.topic.config': {
-                'auto.offset.reset': 'largest',
-                'auto.commit.interval.ms': 5000
-            }
-        }
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
+            'group.id': 'group' + topic_name,
+            'fetch.wait.max.ms': 20,
+            #'debug': 'cgrp,topic,fetch,protocol',
+            'auto.offset.reset': 'earliest',
+            'auto.commit.interval.ms': 5000,
+            'consumer.timeout.ms': 20
+            
+         }
     
     def run(self):
          
