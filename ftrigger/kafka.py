@@ -60,8 +60,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         # if we want to manually assign parition to a consume, enable this line
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
-        # if we do not want to manually assign parition to a consumer, enable this line
-        #consumer.assign([TopicPartition(self.topic_name)])
         consumer.subscribe([str(self.topic_name)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
@@ -145,7 +143,8 @@ class KafkaTrigger(object):
     def run(self):
          
          topic_list_with_consumers = []
-         no_of_paritions = 20
+         no_of_paritions = os.getenv('NUMBER_OF_CONSUMERS_PER_TOPIC', 5)
+         log.debug('Number of Consumers:' + str(no_of_paritions))                                 
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
