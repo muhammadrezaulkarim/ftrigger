@@ -144,6 +144,7 @@ class KafkaTrigger(object):
          
          topic_list_with_consumers = []
          no_of_paritions = os.getenv('NUMBER_OF_CONSUMERS_PER_TOPIC', 5)
+         no_of_paritions = int(no_of_paritions)                                
          log.debug('Number of Consumers:' + str(no_of_paritions))                                 
 
          callbacks = collections.defaultdict(list)
