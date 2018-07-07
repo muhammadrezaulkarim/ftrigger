@@ -61,7 +61,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
         # if we do not want to manually assign parition to a consumer, enable this line
-        consumer.assign([TopicPartition(self.topic_name)])
+        #consumer.assign([TopicPartition(self.topic_name)])
+        consumer.subscribe([str(self.topic_name)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
         log.info('Executing a consumer with ID: ' + self.thread_id)
