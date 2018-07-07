@@ -15,7 +15,9 @@ RUN apk add --no-cache --virtual .build-deps \
         make \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
+    pip install kafka-python && \
     apk del .build-deps
+   
 
 LABEL maintainer="King Chung Huang <kchuang@ucalgary.ca>" \
       org.label-schema.schema-version="1.0" \
