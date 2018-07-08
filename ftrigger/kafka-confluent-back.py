@@ -37,11 +37,11 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': 20,
+            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
             #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
-                'auto.offset.reset': 'smallest',
-                'auto.commit.interval.ms': 5000
+                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
             }
       }
       log.debug('Instantiating thread: ' + self.thread_id)
@@ -132,13 +132,15 @@ class KafkaTrigger(object):
         self.functions = Functions(name='kafka')
         self.functions.refresh_interval=10
         self.config = {
-            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
-            'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
+            'group.id': 'group',
+            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
+            #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
-                'auto.offset.reset': 'largest',
-                'auto.commit.interval.ms': 5000
+                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
             }
-        }
+      }
     
     def run(self):
          
