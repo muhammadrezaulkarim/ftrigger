@@ -37,12 +37,15 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'auto.offset.reset': 'earliest',
-            'auto.commit.interval.ms': 5000,
-            'consumer.timeout.ms': 20,
-            'fetch.wait.max.ms': 20
-            
-      }
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'auto.commit.interval.ms': os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
+       }
+      # fetch.wait.max.ms: maximum amount of time in milliseconds the server will block before answering the fetch request
+      # if there isn’t sufficient data to immediately satisfy the requirement given by fetch_min_bytes (default:1 byte)
+      # auto.offset.reset: A policy for resetting offsets on OffsetOutOfRange errors: ‘earliest’ will move to the oldest available message,
+      # ‘latest’ will move to the most recent.
+        
       log.debug('Instantiating thread: ' + self.thread_id)
       log.info('Instantiating thread: ' + self.thread_id)
         
@@ -64,7 +67,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         log.debug('fetch_max_wait_ms: ' + str(self.config['fetch.wait.max.ms']) + ' group_id: ' + self.config['group.id'])
         # if we want to manually assign parition to a consume, enable this line
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
-        
         #consumer.subscribe([str(self.topic_name)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
@@ -77,7 +79,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
-
+        
+        poll_time_out = int(os.getenv('POLL_TIME_OUT', 1000)) # milliseconds spent waiting in poll if data is not available in the buffer
+        poll_max_records = int(os.getenv('MAX_POLL_RECORDS', 10000)) # maximum number of records returned in a single call to poll()
+        
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -89,7 +94,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            consumer.poll(timeout_ms=1000, max_records=5000)
+            
+            consumer.poll(timeout_ms=poll_time_out, max_records=poll_max_records)
             
             for message in consumer:
                 log.debug('Processing a message in thread: ' +  self.thread_id)
@@ -140,10 +146,10 @@ class KafkaTrigger(object):
         self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-            'group.id': 'group',
-            'fetch.wait.max.ms': 20,
-            'auto.offset.reset': 'earliest',
-            'auto.commit.interval.ms': 5000
+            'group.id': 'ConsumerGroup',
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'auto.commit.interval.ms': os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
          }
     
     def run(self):
