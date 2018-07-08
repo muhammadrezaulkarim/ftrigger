@@ -26,7 +26,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
       multiprocessing.Process.__init__(self)
-      self.stop_event = multiprocessing.Event()
       #self.setDaemon(True)
       self.thread_id = thread_id
       # instantiate functions
@@ -54,9 +53,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             return json.dumps({'key': key, 'value': value})
         else:
             return key
-        
-   def stop(self):
-        self.stop_event.set()  
         
    def run(self):
         consumer = KafkaConsumer(str(self.topic_name), bootstrap_servers=self.config['bootstrap.servers'],
@@ -93,8 +89,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            consumer.poll()
-            #message = consumer.poll(timeout=1.0)
+            consumer.poll(timeout_ms=1000, max_records=5000)
             
             for message in consumer:
                 log.debug('Processing a message in thread: ' +  self.thread_id)
