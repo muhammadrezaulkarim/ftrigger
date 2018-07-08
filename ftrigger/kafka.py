@@ -93,7 +93,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            consumer.poll(timeout=1.0)
+            consumer.poll(max_timeout=100)
             #message = consumer.poll(timeout=1.0)
             
             for message in consumer:
