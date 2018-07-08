@@ -38,11 +38,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': 20,
-            #'debug': 'cgrp,topic,fetch,protocol',
             'auto.offset.reset': 'earliest',
             'auto.commit.interval.ms': 5000,
-            'consumer.timeout.ms': 20
+            'consumer.timeout.ms': 20,
+            'fetch.wait.max.ms': 20
             
       }
       log.debug('Instantiating thread: ' + self.thread_id)
@@ -64,6 +63,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                                  auto_offset_reset=self.config['auto.offset.reset'],
                                  consumer_timeout_ms=self.config['consumer.timeout.ms'],
                                  auto_commit_interval_ms=self.config['auto.commit.interval.ms'],
+                                 fetch_max_wait_ms=self.config['fetch.wait.max.ms'], # must be set to a low value
                                  group_id=self.config['group.id'])
         
         # if we want to manually assign parition to a consume, enable this line
@@ -147,11 +147,8 @@ class KafkaTrigger(object):
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group',
             'fetch.wait.max.ms': 20,
-            #'debug': 'cgrp,topic,fetch,protocol',
             'auto.offset.reset': 'earliest',
-            'auto.commit.interval.ms': 5000,
-            'consumer.timeout.ms': 20
-            
+            'auto.commit.interval.ms': 5000
          }
     
     def run(self):
