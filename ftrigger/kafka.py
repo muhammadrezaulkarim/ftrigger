@@ -72,6 +72,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
+        
         message_count = 0
         message_list = []
         
@@ -87,7 +88,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=1.0)
-            log.debug('Processing a message in thread: ' +  self.thread_id)
+            #log.debug('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
                 log.debug('Empty message received')
@@ -98,7 +99,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 
                 # time interval will be added later
                 if message_count % 1000 == 0:
-                    msg_processor = OpenFaasMessageProcessor(self.thread_id, self.functions, message_list, callbacks)
+                    msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                     msg_processor.start()
                     message_list = []
                     
@@ -123,7 +124,7 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
         
    def run(self):
         for message in self.message_list:
-               topic, key, value = message.topic(), \
+                topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
             
