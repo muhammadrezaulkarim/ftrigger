@@ -17,7 +17,7 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 log = logging.getLogger(__name__)
 
 
