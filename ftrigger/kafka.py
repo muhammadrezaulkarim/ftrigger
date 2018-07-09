@@ -72,7 +72,9 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
-
+        message_count = 0
+        message_list = []
+        
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -91,7 +93,37 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 log.debug('Empty message received')
                 pass
             elif not message.error():
-                topic, key, value = message.topic(), \
+                message_count =  message_count + 1
+                message_list.append(message)
+                
+                # time interval will be added later
+                if message_count % 1000 == 0:
+                    msg_processor = OpenFaasMessageProcessor(self.thread_id, self.functions, message_list, callbacks)
+                    msg_processor.start()
+                    message_list = []
+                    
+                    
+
+class OpenFaasMessageProcessor(multiprocessing.Process):
+   def __init__(self, thread_id, functions, message_list, callbacks):
+      multiprocessing.Process.__init__(self)
+      self.thread_id = thread_id
+      self.functions = functions
+      self.message_list = message_list
+      self.callbacks =  callbacks
+      log.debug('Processing a new message list in thread: ' + self.thread_id)
+        
+   def function_data(self, function, topic, key, value):
+        data_opt = self.functions.arguments(function).get('data', 'key')
+
+        if data_opt == 'key-value':
+            return json.dumps({'key': key, 'value': value})
+        else:
+            return key
+        
+   def run(self):
+        for message in self.message_list:
+               topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
             
@@ -111,8 +143,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     pass
                 
                              
-                for function in callbacks[topic]:
-                    jq_filter = functions.arguments(function).get('filter')
+                for function in self.callbacks[topic]:
+                    jq_filter = self.functions.arguments(function).get('filter')
                     try:
                         if jq_filter and not pyjq.first(jq_filter, value):
                             continue
@@ -123,8 +155,9 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
-                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-
+                    self.functions.gateway.post(self.functions._gateway_base + f'/function/{function["name"]}', data=data)
+       
+                                           
 class KafkaTrigger(object):
 
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
