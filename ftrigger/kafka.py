@@ -12,16 +12,15 @@ try:
 except:
     import json
 import pyjq
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, KafkaProducer
 
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-### This ftrigger version should be used when ordering of the messages is not important ###
-### Messages can be handled out of order by different processes ###
+
 #class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
@@ -84,10 +83,6 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         poll_time_out = int(os.getenv('POLL_TIME_OUT', 1000)) # milliseconds spent waiting in poll if data is not available in the buffer
         poll_max_records = int(os.getenv('MAX_POLL_RECORDS', 10000)) # maximum number of records returned in a single call to poll()
         
-        start_time = datetime.datetime.now()  
-        message_count = 0
-        message_list = []
-        
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -109,76 +104,39 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     log.debug('Empty message received')
                     pass
                 else:
-                    message_count =  message_count + 1
-                    message_list.append(message)
+                    topic, key, value = message.topic, \
+                                        message.key, \
+                                        message.value
 
-                    end_time = datetime.datetime.now()
-                    elapsed_time = end_time - start_time
-                    elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
-                    # ignore time for the time being
-                    #if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
-             
-            log.debug('Message list size: ' + str(len(message_list)))
-            if len(message_list) > 0:
-                msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                msg_processor.start()
-                message_list = []
-                start_time =  end_time  # reset end time
-                
-                        
-class OpenFaasMessageProcessor(multiprocessing.Process):
-   def __init__(self, thread_id, functions, message_list, callbacks):
-      multiprocessing.Process.__init__(self)
-      self.thread_id = thread_id
-      self.functions = functions
-      self.message_list = message_list
-      self.callbacks =  callbacks
-      log.debug('Processing a new message list in thread: ' + self.thread_id)
-        
-   def function_data(self, function, topic, key, value):
-        data_opt = self.functions.arguments(function).get('data', 'key')
 
-        if data_opt == 'key-value':
-            return json.dumps({'key': key, 'value': value})
-        else:
-            return key
-        
-   def run(self):
-        for message in self.message_list:
-                topic, key, value = message.topic(), \
-                                    message.key(), \
-                                    message.value()
-            
-                
-                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
-                try:
-                    key = message.key().decode('utf-8')
-                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
-                    pass
-                try:
-                    value = json.loads(value)
-                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
-                    pass
-                
-                             
-                for function in self.callbacks[topic]:
-                    jq_filter = self.functions.arguments(function).get('filter')
+                    log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                     try:
-                        if jq_filter and not pyjq.first(jq_filter, value):
-                            continue
+                        key = message.key.decode('utf-8')
+                        log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                     except:
-                        log.error(f'Could not filter message value with {jq_filter}')
-                    
-                    data = self.function_data(function, topic, key, value)
-                    log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    
-                    self.functions.gateway.post(self.functions._gateway_base + f'/function/{function["name"]}', data=data)
-                                                
+                        log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                        pass
+                    try:
+                        value = json.loads(value)
+                        log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    except:
+                        log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                        pass
+
+
+                    for function in callbacks[topic]:
+                        jq_filter = functions.arguments(function).get('filter')
+                        try:
+                            if jq_filter and not pyjq.first(jq_filter, value):
+                                continue
+                        except:
+                            log.error(f'Could not filter message value with {jq_filter}')
+
+                        data = self.function_data(function, topic, key, value)
+                        log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                        log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+
+                        functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
 
 class KafkaTrigger(object):
 
