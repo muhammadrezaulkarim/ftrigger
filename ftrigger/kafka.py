@@ -12,7 +12,7 @@ try:
 except:
     import json
 import pyjq
-from confluent_kafka import Consumer, TopicPartition
+from kafka import KafkaConsumer
 
 from .trigger import Functions
 
@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 ### This ftrigger version should be used when ordering of the messages is not important ###
 ### Messages can be handled out of order by different processes ###
+#class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
@@ -37,13 +38,15 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            #'debug': 'cgrp,topic,fetch,protocol',
-            'default.topic.config': {
-                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
-                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
-            }
-      }
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'auto.commit.interval.ms': os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
+       }
+      # fetch.wait.max.ms: maximum amount of time in milliseconds the server will block before answering the fetch request
+      # if there isn’t sufficient data to immediately satisfy the requirement given by fetch_min_bytes (default:1 byte)
+      # auto.offset.reset: A policy for resetting offsets on OffsetOutOfRange errors: ‘earliest’ will move to the oldest available message,
+      # ‘latest’ will move to the most recent.
+        
       log.debug('Instantiating thread: ' + self.thread_id)
       log.info('Instantiating thread: ' + self.thread_id)
         
@@ -56,11 +59,16 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             return key
         
    def run(self):
-        consumer = Consumer(self.config)
+        consumer = KafkaConsumer(str(self.topic_name), bootstrap_servers=self.config['bootstrap.servers'],
+                                 auto_offset_reset=self.config['auto.offset.reset'],
+                                 fetch_max_wait_ms=int(self.config['fetch.wait.max.ms']), # must be set to a low value
+                                 group_id=self.config['group.id'])
+        
+        log.debug('bootstrap_servers: ' + self.config['bootstrap.servers'] + ' auto_offset_reset: ' + self.config['auto.offset.reset'])
+        log.debug('fetch_max_wait_ms: ' + str(self.config['fetch.wait.max.ms']) + ' group_id: ' + self.config['group.id'])
         # if we want to manually assign parition to a consume, enable this line
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
-        
-        consumer.subscribe([str(self.topic_name)])
+        #consumer.subscribe([str(self.topic_name)])
         
         log.debug('Executing a consumer with ID: ' + self.thread_id)
         log.info('Executing a consumer with ID: ' + self.thread_id)
@@ -73,10 +81,12 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             consumer.close()
         atexit.register(close)
         
+        poll_time_out = int(os.getenv('POLL_TIME_OUT', 1000)) # milliseconds spent waiting in poll if data is not available in the buffer
+        poll_max_records = int(os.getenv('MAX_POLL_RECORDS', 10000)) # maximum number of records returned in a single call to poll()
+        
+        start_time = datetime.datetime.now()  
         message_count = 0
         message_list = []
-        
-        start_time = datetime.datetime.now()
         
         while True:
             add, update, remove = functions.refresh()
@@ -89,26 +99,26 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            message = consumer.poll(timeout=1.0)
-            #log.debug('Processing a message in thread: ' +  self.thread_id)
             
-            if not message:
-                log.debug('Empty message received')
-                pass
-            elif not message.error():
-                message_count =  message_count + 1
-                message_list.append(message)
+            consumer.poll(timeout_ms=poll_time_out, max_records=poll_max_records)
+            
+            for message in consumer:
+                if message:
+                    message_count =  message_count + 1
+                    message_list.append(message)
+
+                    end_time = datetime.datetime.now()
+                    elapsed_time = end_time - start_time
+                    elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
+                    # ignore time for the time being
+                    #if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
+             
+            if len(message_list) > 0:
+                msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                msg_processor.start()
+                message_list = []
+                start_time =  end_time  # reset end time
                 
-                end_time = datetime.datetime.now()
-                elapsed_time = end_time - start_time
-                elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
-               
-                if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
-                    if len(message_list) > 0:
-                        msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                        msg_processor.start()
-                        message_list = []
-                        start_time =  end_time  # reset end time
                         
 class OpenFaasMessageProcessor(multiprocessing.Process):
    def __init__(self, thread_id, functions, message_list, callbacks):
@@ -162,8 +172,8 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
                     log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     self.functions.gateway.post(self.functions._gateway_base + f'/function/{function["name"]}', data=data)
-       
-                                           
+                                                
+
 class KafkaTrigger(object):
 
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
@@ -172,14 +182,11 @@ class KafkaTrigger(object):
         self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-            'group.id': 'group',
-            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            #'debug': 'cgrp,topic,fetch,protocol',
-            'default.topic.config': {
-                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
-                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
-            }
-      }
+            'group.id': 'ConsumerGroup',
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'auto.commit.interval.ms': os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
+         }
     
     def run(self):
          
