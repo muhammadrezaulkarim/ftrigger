@@ -102,8 +102,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 end_time = datetime.datetime.now()
                 elapsed_time = end_time - start_time
                 elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
-               
-                if (message_count % 1000 == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
+               :
+                if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
                     if len(message_list) > 0:
                         msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                         msg_processor.start()
