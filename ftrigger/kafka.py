@@ -20,8 +20,8 @@ from .trigger import Functions
 logging.basicConfig(level=logging.WARNING)
 log = logging.getLogger(__name__)
 
-
-#class OpenFaasKafkaConsumer(threading.Thread):
+### This ftrigger version should be used when ordering of the messages is not important ###
+### Messages can be handled out of order by different processes ###
 class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
@@ -76,6 +76,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         message_count = 0
         message_list = []
         
+        start_time = datetime.datetime.now()
+        
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -97,14 +99,17 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 message_count =  message_count + 1
                 message_list.append(message)
                 
-                # time interval will be added later
-                if message_count % 1000 == 0:
-                    msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                    msg_processor.start()
-                    message_list = []
-                    
-                    
-
+                end_time = datetime.datetime.now()
+                elapsed_time = end_time - start_time
+                elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
+               
+                if (message_count % 1000 == 0) || (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
+                    if len(message_list) > 0:
+                        msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                        msg_processor.start()
+                        message_list = []
+                        start_time =  end_time  # reset end time
+                        
 class OpenFaasMessageProcessor(multiprocessing.Process):
    def __init__(self, thread_id, functions, message_list, callbacks):
       multiprocessing.Process.__init__(self)
