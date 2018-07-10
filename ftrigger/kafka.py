@@ -103,7 +103,12 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             consumer.poll(timeout_ms=poll_time_out, max_records=poll_max_records)
             
             for message in consumer:
-                if message:
+                log.debug('Processing a message in thread: ' +  self.thread_id)
+
+                if not message:
+                    log.debug('Empty message received')
+                    pass
+                else:
                     message_count =  message_count + 1
                     message_list.append(message)
 
@@ -113,6 +118,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     # ignore time for the time being
                     #if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
              
+            log.debug('Message list size: ' + str(len(message_list)))
             if len(message_list) > 0:
                 msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                 msg_processor.start()
