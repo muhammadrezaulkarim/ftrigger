@@ -21,10 +21,12 @@ services:
     image: mrkcse/ftrigger:latest
     command: kafka-trigger
     environment:
-      NUMBER_OF_CONSUMERS_PER_TOPIC: 7
+      NUMBER_OF_CONSUMERS_PER_TOPIC: 1
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MAX_POLL_RECORDS: 5000
       POLL_TIME_OUT: 1000
+      MAX_WAIT_MSG_LIST: 5000
+      MAX_RECORDS_MSG_LIST: 1000
       AUTO_COMMIT_INTERVAL_MS: 5000
       FETCH_MAX_WAIT_MS: 20
       AUTO_OFFSET_RESET: earliest
@@ -32,7 +34,7 @@ services:
       - functions
       - streaming
     deploy:
-      replicas: 2
+      replicas: 1
       resources:
         limits:
           memory: 200M
@@ -120,7 +122,7 @@ services:
       - KAFKA_RESERVED_BROKER_MAX_ID=999999999
       - KAFKA_LOG_CLEANUP_POLICY=compact
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_NUM_PARTITIONS=10
+      - KAFKA_NUM_PARTITIONS=1
     networks:
       - streaming
     deploy:
