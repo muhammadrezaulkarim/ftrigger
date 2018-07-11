@@ -104,11 +104,13 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             
             for message in consumer:
                 log.debug('Processing a message in thread: ' +  self.thread_id)
+                
 
                 if not message:
                     log.debug('Empty message received')
                     pass
                 else:
+                    log.debug('Key:' + str(message.key) + ' Value:' + str(message.value))
                     message_count =  message_count + 1
                     message_list.append(message)
 
@@ -118,7 +120,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     # ignore time for the time being
                     #if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
              
-            log.debug('Message list size: ' + str(len(message_list)))
+            #log.debug('Message list size: ' + str(len(message_list)))
             if len(message_list) > 0:
                 msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                 msg_processor.start()
@@ -145,14 +147,14 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
         
    def run(self):
         for message in self.message_list:
-                topic, key, value = message.topic(), \
-                                    message.key(), \
-                                    message.value()
+                topic, key, value = message.topic, \
+                                        message.key, \
+                                        message.value
             
                 
-                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
+                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)                  
                 try:
-                    key = message.key().decode('utf-8')
+                    key = message.key.decode('utf-8')
                     log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                 except:
                     log.debug('Key could not be decoded in thread: ' + self.thread_id )
@@ -161,8 +163,8 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
                     value = json.loads(value)
                     log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
-                    pass
+                     log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                     pass
                 
                              
                 for function in self.callbacks[topic]:
