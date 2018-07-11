@@ -118,14 +118,21 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     elapsed_time = end_time - start_time
                     elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
                     # ignore time for the time being
-                    #if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
-             
-            #log.debug('Message list size: ' + str(len(message_list)))
+                    if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
+                            log.debug('Message list size: ' + str(len(message_list)))
+                            msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                            msg_processor.start()
+                            message_list = []
+                            start_time =  end_time  # reset end time
+            
+            log.debug('Message list size: ' + str(len(message_list)))
             if len(message_list) > 0:
-                msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                msg_processor.start()
-                message_list = []
-                start_time =  end_time  # reset end time
+                 log.debug('Message list size: ' + str(len(message_list)))
+                 msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                 msg_processor.start()
+                 message_list = []
+                 start_time =  end_time  # reset end time
+         
                 
                         
 class OpenFaasMessageProcessor(multiprocessing.Process):
