@@ -12,7 +12,9 @@ try:
 except:
     import json
 import pyjq
-from kafka import KafkaConsumer, KafkaProducer
+from kafka import KafkaConsumer
+from kafka.coordinator.assignors.range import RangePartitionAssignor
+from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 
 from .trigger import Functions
 
