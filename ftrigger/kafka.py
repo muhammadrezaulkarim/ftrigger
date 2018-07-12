@@ -64,9 +64,9 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         consumer = KafkaConsumer(str(self.topic_name), bootstrap_servers=self.config['bootstrap.servers'],
                                  auto_offset_reset=self.config['auto.offset.reset'],
                                  fetch_max_wait_ms=int(self.config['fetch.wait.max.ms']), # must be set to a low value
-                                 group_id=self.config['group.id'],
-                                 partition_assignment_strategy=[RoundRobinPartitionAssignor])
-        
+                                 group_id=self.config['group.id']
+                                )
+        #  partition_assignment_strategy=[RangePartitionAssignor, RoundRobinPartitionAssignor]
         log.debug('bootstrap_servers: ' + self.config['bootstrap.servers'] + ' auto_offset_reset: ' + self.config['auto.offset.reset'])
         log.debug('fetch_max_wait_ms: ' + str(self.config['fetch.wait.max.ms']) + ' group_id: ' + self.config['group.id'])
         # if we want to manually assign parition to a consume, enable this line
