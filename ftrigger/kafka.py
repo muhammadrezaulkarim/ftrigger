@@ -38,7 +38,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
             'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            #'debug': 'cgrp,topic,fetch,protocol',
+            'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
                 'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
@@ -103,12 +103,20 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 elapsed_time = end_time - start_time
                 elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
                
-                if (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0) or (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))):
+                if message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0:
                     if len(message_list) > 0:
                         msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                         msg_processor.start()
                         message_list = []
                         start_time =  end_time  # reset end time
+                        
+                
+            if elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000)):
+                if len(message_list) > 0:
+                     msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                     msg_processor.start()
+                     message_list = []
+                     start_time =  end_time  # reset end time
                         
 class OpenFaasMessageProcessor(multiprocessing.Process):
    def __init__(self, thread_id, functions, message_list, callbacks):
