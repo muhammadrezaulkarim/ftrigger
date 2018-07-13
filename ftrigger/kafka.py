@@ -109,7 +109,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                          msg_processor.start()
                          message_list = []
-                         start_time =  end_time  # reset end time
+                    
+                    start_time =  end_time  # reset end time
                
            
                         
