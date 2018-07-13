@@ -28,7 +28,7 @@ services:
       MAX_WAIT_MSG_LIST: 1000
       MAX_RECORDS_MSG_LIST: 5000
       AUTO_COMMIT_INTERVAL_MS: 5000
-      FETCH_MAX_WAIT_MS: 100
+      FETCH_MAX_WAIT_MS: 1000
       AUTO_OFFSET_RESET: earliest
     networks:
       - functions
