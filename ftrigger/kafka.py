@@ -103,13 +103,15 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             elif not message.error():
                 message_count =  message_count + 1
                 message_list.append(message)
+                
+                if (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))) or (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0):
+                    if len(message_list) > 0:
+                         msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
+                         msg_processor.start()
+                         message_list = []
+                         start_time =  end_time  # reset end time
                
-            if (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))) or (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0):
-                if len(message_list) > 0:
-                     msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                     msg_processor.start()
-                     message_list = []
-                     start_time =  end_time  # reset end time
+           
                         
 class OpenFaasMessageProcessor(multiprocessing.Process):
    def __init__(self, thread_id, functions, message_list, callbacks):
