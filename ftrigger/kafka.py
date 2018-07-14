@@ -38,7 +38,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
             'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            'debug': 'cgrp,topic,fetch,protocol',
+            #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
                 'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
@@ -101,10 +101,14 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 log.debug('Empty message received')
                 pass
             elif not message.error():
+                log.debug('Key:' + str(message.key()) + ' Value:' + str(message.value()))
+                
                 message_count =  message_count + 1
                 message_list.append(message)
                 
                 if (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))) or (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0):
+                    log.debug('elapsed time: ' + str(elapsed_time))
+                    log.debug('Message list size: ' + str(len(message_list)))
                     if len(message_list) > 0:
                          msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
                          msg_processor.start()
