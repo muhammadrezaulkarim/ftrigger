@@ -41,12 +41,13 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
-                'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True'))
+                'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')),
                 'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
             }
       }
       log.debug('Instantiating thread: ' + self.thread_id)
       log.info('Instantiating thread: ' + self.thread_id)
+      log.debug('Enable auto commit ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True'))
         
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
