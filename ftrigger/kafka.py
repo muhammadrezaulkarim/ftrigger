@@ -17,11 +17,11 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-### This ftrigger version should be used when ordering of the messages is not important ###
-### Messages can be handled out of order by different processes ###
+
+#class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
@@ -72,13 +72,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
-        
-        message_count = 0
-        elapsed_time = 0
-        message_list = []
-        
-        start_time = datetime.datetime.now()
-        
+
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -91,52 +85,12 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=1.0)
-            #log.debug('Processing a message in thread: ' +  self.thread_id)
-                 
-            end_time = datetime.datetime.now()
-            elapsed_time = end_time - start_time
-            elapsed_time = elapsed_time.total_seconds()*1000  # Convert into miliseconds
+            log.debug('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
                 log.debug('Empty message received')
                 pass
             elif not message.error():
-                log.debug('Key:' + str(message.key()) + ' Value:' + str(message.value()))
-                
-                message_count =  message_count + 1
-                message_list.append(message)
-                
-                if (elapsed_time >= int(os.getenv('MAX_WAIT_MSG_LIST', 5000))) or (message_count % int(os.getenv('MAX_RECORDS_MSG_LIST', 1000)) == 0):
-                    log.debug('elapsed time: ' + str(elapsed_time))
-                    log.debug('Message list size: ' + str(len(message_list)))
-                    if len(message_list) > 0:
-                         msg_processor = OpenFaasMessageProcessor(self.thread_id, functions, message_list, callbacks)
-                         msg_processor.start()
-                         message_list = []
-                    
-                    start_time =  end_time  # reset end time
-               
-           
-                        
-class OpenFaasMessageProcessor(multiprocessing.Process):
-   def __init__(self, thread_id, functions, message_list, callbacks):
-      multiprocessing.Process.__init__(self)
-      self.thread_id = thread_id
-      self.functions = functions
-      self.message_list = message_list
-      self.callbacks =  callbacks
-      log.debug('Processing a new message list in thread: ' + self.thread_id)
-        
-   def function_data(self, function, topic, key, value):
-        data_opt = self.functions.arguments(function).get('data', 'key')
-
-        if data_opt == 'key-value':
-            return json.dumps({'key': key, 'value': value})
-        else:
-            return key
-        
-   def run(self):
-        for message in self.message_list:
                 topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
@@ -157,8 +111,8 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
                     pass
                 
                              
-                for function in self.callbacks[topic]:
-                    jq_filter = self.functions.arguments(function).get('filter')
+                for function in callbacks[topic]:
+                    jq_filter = functions.arguments(function).get('filter')
                     try:
                         if jq_filter and not pyjq.first(jq_filter, value):
                             continue
@@ -169,9 +123,8 @@ class OpenFaasMessageProcessor(multiprocessing.Process):
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
-                    self.functions.gateway.post(self.functions._gateway_base + f'/function/{function["name"]}', data=data)
-       
-                                           
+                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+
 class KafkaTrigger(object):
 
     def __init__(self, label='ftrigger', name='kafka', refresh_interval=5,
