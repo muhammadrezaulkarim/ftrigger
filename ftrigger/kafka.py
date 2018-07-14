@@ -47,7 +47,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       }
       log.debug('Instantiating thread: ' + self.thread_id)
       log.info('Instantiating thread: ' + self.thread_id)
-      log.debug('Enable auto commit ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True'))
+      log.debug('Enable auto commit: ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True')))
         
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
