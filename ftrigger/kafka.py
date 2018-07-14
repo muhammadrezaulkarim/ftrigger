@@ -41,6 +41,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             #'debug': 'cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+                'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True'))
                 'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
             }
       }
@@ -124,6 +125,13 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                                           
+                # if auto commit not enabled, manually commit the messages
+                if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
+                   current_msg = message
+                   consumer.commit(message=current_msg,async=False)
+                   
+                 
 
 class KafkaTrigger(object):
 
