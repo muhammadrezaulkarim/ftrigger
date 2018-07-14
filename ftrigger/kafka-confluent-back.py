@@ -121,7 +121,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     
                     data = self.function_data(function, topic, key, value)
                     log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                    #log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
 
