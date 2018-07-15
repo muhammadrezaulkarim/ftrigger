@@ -38,7 +38,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
             'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            #'debug': 'cgrp,topic,fetch,protocol',
+            'debug': 'msg,cgrp,topic,fetch,protocol',
             'default.topic.config': {
                 'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
                 'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')),
