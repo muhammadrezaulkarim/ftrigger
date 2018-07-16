@@ -16,6 +16,7 @@ RUN apk add --no-cache --virtual .build-deps \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
     pip install kafka-python && \
+    pip install multiprocessing-logging && \
     apk del .build-deps
    
 
