@@ -19,8 +19,8 @@ from .trigger import Functions
 
 logging.basicConfig(level=logging.DEBUG)
 import multiprocessing_logging
-multiprocessing_logging.install_mp_handler()
 log = logging.getLogger(__name__)
+multiprocessing_logging.install_mp_handler(log)
 
 
 #class OpenFaasKafkaConsumer(threading.Thread):
