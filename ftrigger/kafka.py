@@ -17,10 +17,14 @@ from confluent_kafka import Consumer, TopicPartition
 from .trigger import Functions
 
 
-logging.basicConfig(level=logging.DEBUG)
-import multiprocessing_logging
-log = logging.getLogger(__name__)
-multiprocessing_logging.install_mp_handler(log)
+#logging.basicConfig(level=logging.DEBUG)
+#import multiprocessing_logging
+#log = logging.getLogger(__name__)
+#multiprocessing_logging.install_mp_handler(log)
+
+#multiprocessing.log_to_stderr()
+log = multiprocessing.get_logger()
+log.setLevel(logging.DEBUG)
 
 
 #class OpenFaasKafkaConsumer(threading.Thread):
