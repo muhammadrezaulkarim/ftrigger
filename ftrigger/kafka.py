@@ -23,13 +23,13 @@ from .trigger import Functions
 #multiprocessing_logging.install_mp_handler(log)
 
 #multiprocessing.log_to_stderr()
-log = multiprocessing.get_logger()
-log.setLevel(logging.DEBUG)
+#log = multiprocessing.get_logger()
+#log.setLevel(logging.DEBUG)
 
 
 #class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
-   def __init__(self, thread_id, config, functions, topic_name, partition_no):
+   def __init__(self, thread_id, config, functions, topic_name, partition_no, log_queue):
       #threading.Thread.__init__(self)
       multiprocessing.Process.__init__(self)
       #self.setDaemon(True)
@@ -39,6 +39,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.functions.refresh_interval=10
       self.topic_name = topic_name
       self.partition_no = partition_no
+      self.log = log_queue
       # Reset the config 
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
@@ -51,9 +52,8 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                 'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
             }
       }
-      log.debug('Instantiating thread: ' + self.thread_id)
-      log.info('Instantiating thread: ' + self.thread_id)
-      log.debug('Enable auto commit: ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True')))
+      self.log.put('Instantiating thread: ' + self.thread_id)
+      self.log.put('Enable auto commit: ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True')))
         
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
@@ -69,15 +69,15 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
         
         consumer.subscribe([str(self.topic_name)])
+        log = self.log 
         
-        log.debug('Executing a consumer with ID: ' + self.thread_id)
-        log.info('Executing a consumer with ID: ' + self.thread_id)
+        log.put('Executing a consumer with ID: ' + self.thread_id)
         
         callbacks = collections.defaultdict(list)
         functions = self.functions
 
         def close():
-            log.info('Closing consumer in thread: ' +  self.thread_id)
+            log.put('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
 
@@ -93,10 +93,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                          callbacks[self.topic_name].remove(f)
 
             message = consumer.poll(timeout=1.0)
-            log.debug('Processing a message in thread: ' +  self.thread_id)
+            log.put('Processing a message in thread: ' +  self.thread_id)
             
             if not message:
-                log.debug('Empty message received')
+                log.put('Empty message received')
                 pass
             elif not message.error():
                 topic, key, value = message.topic(), \
@@ -104,18 +104,18 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                                     message.value()
             
                 
-                log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
+                log.put('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                 try:
                     key = message.key().decode('utf-8')
-                    log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
+                    log.put('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                    log.put('Key could not be decoded in thread: ' + self.thread_id )
                     pass
                 try:
                     value = json.loads(value)
-                    log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    log.put('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
                 except:
-                    log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                    log.put('Value could not be decoded in thread: ' + self.thread_id )
                     pass
                 
                              
@@ -125,10 +125,10 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                         if jq_filter and not pyjq.first(jq_filter, value):
                             continue
                     except:
-                        log.error(f'Could not filter message value with {jq_filter}')
+                        log.put(f'Could not filter message value with {jq_filter}')
                     
                     data = self.function_data(function, topic, key, value)
-                    log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                    log.put('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     #log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                     
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
@@ -162,10 +162,15 @@ class KafkaTrigger(object):
          topic_list_with_consumers = []
          no_of_paritions = os.getenv('NUMBER_OF_CONSUMERS_PER_TOPIC', 5)
          no_of_paritions = int(no_of_paritions)                                
-         log.debug('Number of Consumers:' + str(no_of_paritions))                                 
+                                         
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
+                                           
+         process_mgr = multiprocessing.Manager()
+         logging_queue = process_mgr.Queue()
+         central_logger_process = CentralLogger(logging_queue)
+         central_logger_process.start()
          
                                            
          while True:
@@ -187,16 +192,35 @@ class KafkaTrigger(object):
              new_candidate_topics = set(new_candidate_topics)
              for topic_name in new_candidate_topics:
                for partition_no in range(no_of_paritions):    
-                  con_thread = OpenFaasKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
+                  con_thread = OpenFaasKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no, logging_queue)
                   consumer_threads.append(con_thread)
                
                topic_list_with_consumers.append(topic_name)
-               print(topic_list_with_consumers)
+               #print(topic_list_with_consumers)
              
        
              
              for t in consumer_threads:
                 t.start()
+
+              
+
+class CentralLogger(multiprocessing.Process):
+    def __init__(self, log_queue):
+        multiprocessing.Process.__init__(self)
+        self.log_queue = log_queue
+        self.log = logger.getLogger(__name__)
+        self.log.setLevel(logging.DEBUG)
+        self.log.debug("Started Central Logging process")
+
+    def run(self):
+        while True:
+            message = self.log_queue.get()
+            if message:
+                self.log.debug(message)
+                
+         self.log.debug("Shutting down Central Logging process")
+
 
 def main():
     trigger = KafkaTrigger()
