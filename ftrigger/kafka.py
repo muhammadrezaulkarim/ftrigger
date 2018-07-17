@@ -209,7 +209,7 @@ class CentralLogger(multiprocessing.Process):
     def __init__(self, log_queue):
         multiprocessing.Process.__init__(self)
         self.log_queue = log_queue
-        self.log = logger.getLogger(__name__)
+        self.log = logging.getLogger(__name__)
         self.log.setLevel(logging.DEBUG)
         self.log.debug("Started Central Logging process")
 
