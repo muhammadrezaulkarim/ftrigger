@@ -22,11 +22,6 @@ from .trigger import Functions
 #log = logging.getLogger(__name__)
 #multiprocessing_logging.install_mp_handler(log)
 
-#multiprocessing.log_to_stderr()
-#log = multiprocessing.get_logger()
-#log.setLevel(logging.DEBUG)
-
-
 #class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
    def __init__(self, thread_id, config, functions, topic_name, partition_no, log_queue):
