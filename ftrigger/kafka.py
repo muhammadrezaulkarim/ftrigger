@@ -22,7 +22,7 @@ class KafkaTrigger(object):
                  kafka='kafka:9092'):
         self.functions = Functions(name='kafka')
         self.config = {
-            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka:9092),
+            'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'debug': 'cgrp,topic,fetch,protocol',
             'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
             'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
