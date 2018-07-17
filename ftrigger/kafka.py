@@ -12,19 +12,20 @@ try:
 except:
     import json
 import pyjq
-from confluent_kafka import Consumer, TopicPartition
+from kafka import KafkaConsumer, KafkaProducer
 
 from .trigger import Functions
 
 
-#logging.basicConfig(level=logging.DEBUG)
-#import multiprocessing_logging
-#log = logging.getLogger(__name__)
-#multiprocessing_logging.install_mp_handler(log)
+logging.basicConfig(level=logging.DEBUG)
+import multiprocessing_logging
+log = logging.getLogger(__name__)
+multiprocessing_logging.install_mp_handler(log)
+
 
 #class OpenFaasKafkaConsumer(threading.Thread):
 class OpenFaasKafkaConsumer(multiprocessing.Process):
-   def __init__(self, thread_id, config, functions, topic_name, partition_no, log_queue):
+   def __init__(self, thread_id, config, functions, topic_name, partition_no):
       #threading.Thread.__init__(self)
       multiprocessing.Process.__init__(self)
       #self.setDaemon(True)
@@ -34,21 +35,22 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
       self.functions.refresh_interval=10
       self.topic_name = topic_name
       self.partition_no = partition_no
-      self.log = log_queue
       # Reset the config 
       self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
             'group.id': 'group' + topic_name,
-            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            'debug': 'msg,cgrp,topic,fetch,protocol',
-            'default.topic.config': {
-                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
-                'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')),
-                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
-            }
-      }
-      self.log.put('Instantiating thread: ' + self.thread_id)
-      self.log.put('Enable auto commit: ' +  str(os.getenv('ENABLE_AUTO_COMMIT', 'True')))
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'enable.auto.commit': bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')),
+            'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000)),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
+       }
+      # fetch.wait.max.ms: maximum amount of time in milliseconds the server will block before answering the fetch request
+      # if there isn’t sufficient data to immediately satisfy the requirement given by fetch_min_bytes (default:1 byte)
+      # auto.offset.reset: A policy for resetting offsets on OffsetOutOfRange errors: ‘earliest’ will move to the oldest available message,
+      # ‘latest’ will move to the most recent.
+        
+      log.debug('Instantiating thread: ' + self.thread_id)
+      log.info('Instantiating thread: ' + self.thread_id)
         
    def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
@@ -59,23 +61,34 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
             return key
         
    def run(self):
-        consumer = Consumer(self.config)
+        consumer = KafkaConsumer(str(self.topic_name), bootstrap_servers=self.config['bootstrap.servers'],
+                                 auto_offset_reset=self.config['auto.offset.reset'],
+                                 fetch_max_wait_ms=int(self.config['fetch.wait.max.ms']), # must be set to a low value
+                                 group_id=self.config['group.id'],
+                                 auto_commit_interval_ms=self.config['auto.commit.interval.ms'],
+                                 enable_auto_commit=self.config['enable.auto.commit']
+                                )
+        
+        log.debug('bootstrap_servers: ' + self.config['bootstrap.servers'] + ' auto_offset_reset: ' + self.config['auto.offset.reset'])
+        log.debug('fetch_max_wait_ms: ' + str(self.config['fetch.wait.max.ms']) + ' group_id: ' + self.config['group.id'])
         # if we want to manually assign parition to a consume, enable this line
         #consumer.assign([TopicPartition(self.topic_name, self.partition_no)])
+        #consumer.subscribe([str(self.topic_name)])
         
-        consumer.subscribe([str(self.topic_name)])
-        log = self.log 
-        
-        log.put('Executing a consumer with ID: ' + self.thread_id)
+        log.debug('Executing a consumer with ID: ' + self.thread_id)
+        log.info('Executing a consumer with ID: ' + self.thread_id)
         
         callbacks = collections.defaultdict(list)
         functions = self.functions
 
         def close():
-            log.put('Closing consumer in thread: ' +  self.thread_id)
+            log.info('Closing consumer in thread: ' +  self.thread_id)
             consumer.close()
         atexit.register(close)
-
+        
+        poll_time_out = int(os.getenv('POLL_TIME_OUT', 1000)) # milliseconds spent waiting in poll if data is not available in the buffer
+        poll_max_records = int(os.getenv('MAX_POLL_RECORDS', 10000)) # maximum number of records returned in a single call to poll()
+        
         while True:
             add, update, remove = functions.refresh()
             if add or remove:
@@ -87,53 +100,54 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                      if f in callbacks[self.topic_name]:
                          callbacks[self.topic_name].remove(f)
 
-            message = consumer.poll(timeout=1.0)
-            log.put('Processing a message in thread: ' +  self.thread_id)
             
-            if not message:
-                log.put('Empty message received')
-                pass
-            elif not message.error():
-                topic, key, value = message.topic(), \
-                                    message.key(), \
-                                    message.value()
+            consumer.poll(timeout_ms=poll_time_out, max_records=poll_max_records)
             
-                
-                log.put('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
-                try:
-                    key = message.key().decode('utf-8')
-                    log.put('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.put('Key could not be decoded in thread: ' + self.thread_id )
+            for message in consumer:
+                log.debug('Processing a message in thread: ' +  self.thread_id)
+
+                if not message:
+                    log.debug('Empty message received')
                     pass
-                try:
-                    value = json.loads(value)
-                    log.put('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
-                except:
-                    log.put('Value could not be decoded in thread: ' + self.thread_id )
-                    pass
-                
-                             
-                for function in callbacks[topic]:
-                    jq_filter = functions.arguments(function).get('filter')
+                else:
+                    topic, key, value = message.topic, \
+                                        message.key, \
+                                        message.value
+
+
+                    log.debug('Processing topic: ' + str(topic) + ' : in thread: ' + self.thread_id)
                     try:
-                        if jq_filter and not pyjq.first(jq_filter, value):
-                            continue
+                        key = message.key.decode('utf-8')
+                        log.debug('Processing Key: ' + str(key) + ' : in thread: ' + self.thread_id)
                     except:
-                        log.put(f'Could not filter message value with {jq_filter}')
+                        log.debug('Key could not be decoded in thread: ' + self.thread_id )
+                        pass
+                    try:
+                        value = json.loads(value)
+                        log.debug('Processing value: ' + str(value) + ' : in thread: ' + self.thread_id)
+                    except:
+                        log.debug('Value could not be decoded in thread: ' + self.thread_id )
+                        pass
+
+
+                    for function in callbacks[topic]:
+                        jq_filter = functions.arguments(function).get('filter')
+                        try:
+                            if jq_filter and not pyjq.first(jq_filter, value):
+                                continue
+                        except:
+                            log.error(f'Could not filter message value with {jq_filter}')
+
+                        data = self.function_data(function, topic, key, value)
+                        log.debug('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                        #log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+
+                        functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
                     
-                    data = self.function_data(function, topic, key, value)
-                    log.put('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    #log.info('In thread:' + self.thread_id + ' : Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
-                    
-                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-                                           
-                # if auto commit not enabled, manually commit the messages
-                if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
-                   current_msg = message
-                   consumer.commit(message=current_msg,async=False)
-                   
-                 
+                    # if auto commit not enabled, manually commit the messages
+                    if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
+                       current_msg = message
+                       consumer.commit(message=current_msg,async=False)
 
 class KafkaTrigger(object):
 
@@ -143,29 +157,21 @@ class KafkaTrigger(object):
         self.functions.refresh_interval=10
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092'),
-            'group.id': 'group',
-            'fetch.wait.max.ms': int(os.getenv('FETCH_MAX_WAIT_MS', 20)),
-            #'debug': 'cgrp,topic,fetch,protocol',
-            'default.topic.config': {
-                'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
-                'auto.commit.interval.ms': int(os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000))
-            }
-      }
+            'group.id': 'ConsumerGroup',
+            'auto.offset.reset': os.getenv('AUTO_OFFSET_RESET', 'latest'),
+            'auto.commit.interval.ms': os.getenv('AUTO_COMMIT_INTERVAL_MS', 5000),
+            'fetch.wait.max.ms': os.getenv('FETCH_MAX_WAIT_MS', 10)
+         }
     
     def run(self):
          
          topic_list_with_consumers = []
          no_of_paritions = os.getenv('NUMBER_OF_CONSUMERS_PER_TOPIC', 5)
          no_of_paritions = int(no_of_paritions)                                
-                                         
+         log.debug('Number of Consumers:' + str(no_of_paritions))                                 
 
          callbacks = collections.defaultdict(list)
          functions = self.functions
-                                           
-         process_mgr = multiprocessing.Manager()
-         logging_queue = process_mgr.Queue()
-         central_logger_process = CentralLogger(logging_queue)
-         central_logger_process.start()
          
                                            
          while True:
@@ -187,35 +193,15 @@ class KafkaTrigger(object):
              new_candidate_topics = set(new_candidate_topics)
              for topic_name in new_candidate_topics:
                for partition_no in range(no_of_paritions):    
-                  con_thread = OpenFaasKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no, logging_queue)
+                  con_thread = OpenFaasKafkaConsumer(topic_name + '-' + str(partition_no), self.config, self.functions, topic_name, partition_no)
                   consumer_threads.append(con_thread)
                
                topic_list_with_consumers.append(topic_name)
-               #print(topic_list_with_consumers)
              
        
              
              for t in consumer_threads:
                 t.start()
-
-              
-
-class CentralLogger(multiprocessing.Process):
-    def __init__(self, log_queue):
-        multiprocessing.Process.__init__(self)
-        self.log_queue = log_queue
-        self.log = logging.getLogger(__name__)
-        self.log.setLevel(logging.DEBUG)
-        self.log.debug("Started Central Logging process")
-
-    def run(self):
-        while True:
-            message = self.log_queue.get()
-            if message:
-                self.log.debug(message)
-                
-        self.log.debug("Shutting down Central Logging process")
-
 
 def main():
     trigger = KafkaTrigger()
