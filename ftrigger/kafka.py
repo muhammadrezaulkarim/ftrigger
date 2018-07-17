@@ -219,7 +219,7 @@ class CentralLogger(multiprocessing.Process):
             if message:
                 self.log.debug(message)
                 
-         self.log.debug("Shutting down Central Logging process")
+        self.log.debug("Shutting down Central Logging process")
 
 
 def main():
