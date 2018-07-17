@@ -146,8 +146,7 @@ class OpenFaasKafkaConsumer(multiprocessing.Process):
                     
                     # if auto commit not enabled, manually commit the messages
                     if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
-                       current_msg = message
-                       consumer.commit(message=current_msg,async=False)
+                         consumer.commit()
 
 class KafkaTrigger(object):
 
