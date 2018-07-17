@@ -28,9 +28,9 @@ services:
       MAX_WAIT_MSG_LIST: 1000
       MAX_RECORDS_MSG_LIST: 5000
       AUTO_COMMIT_INTERVAL_MS: 5000
-      ENABLE_AUTO_COMMIT: 'False'
-      FETCH_MAX_WAIT_MS: 20
-      AUTO_OFFSET_RESET: earliest
+      ENABLE_AUTO_COMMIT: 'True'
+      FETCH_MAX_WAIT_MS: 100
+      AUTO_OFFSET_RESET: latest
     networks:
       - functions
       - streaming
