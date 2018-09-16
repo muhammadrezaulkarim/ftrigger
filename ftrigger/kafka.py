@@ -78,7 +78,7 @@ class KafkaTrigger(object):
                 except:
                     pass
                 for function in callbacks[topic]:
-                    jq_filter = 
+                    jq_filter = functions.arguments(function).get('filter') 
                     try:
                         if jq_filter and not pyjq.first(jq_filter, value):
                             continue
