@@ -2,6 +2,7 @@ import atexit
 import collections
 import logging
 import os
+import requests
 
 try:
     import ujson as json
@@ -77,15 +78,24 @@ class KafkaTrigger(object):
                 except:
                     pass
                 for function in callbacks[topic]:
-                    jq_filter = functions.arguments(function).get('filter')
+                    jq_filter = 
                     try:
                         if jq_filter and not pyjq.first(jq_filter, value):
                             continue
                     except:
                         log.error(f'Could not filter message value with {jq_filter}')
                     data = self.function_data(function, topic, key, value)
-                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-                    log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                   
+                    function_directcall_url = functions.arguments(function).get('upstream_url')
+                    
+                    
+                    if function_directcall_url:
+                        headers = {"Content-Type" : "application/json"}
+                        requests.post(str(function_directcall_url), data=data, headers=headers)
+                        log.debug('Direct function call url:' + str(function_directcall_url) + ' function:' + f'/function/{function["name"]}' + ' Data:' + data )
+                    else:
+                        functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                        log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
                 
                 # if auto commit not enabled, manually commit the messages
                 if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
