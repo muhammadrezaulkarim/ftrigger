@@ -62,10 +62,18 @@ class KafkaTrigger(object):
                     log.debug(f'Subscribing to {interested_topics}')
                     consumer.subscribe(list(interested_topics))
 
+            log.debug('Before polling...')
+            
             message = consumer.poll(timeout=functions.refresh_interval)
+            
+            log.debug('After polling...')
+            
             if not message:
                 log.debug('Empty message received')
             elif not message.error():
+                
+                log.debug('Key:' + str(message.key()) + ' Value:' + str(message.value()))
+                
                 topic, key, value = message.topic(), \
                                     message.key(), \
                                     message.value()
@@ -84,18 +92,13 @@ class KafkaTrigger(object):
                             continue
                     except:
                         log.error(f'Could not filter message value with {jq_filter}')
+                    
                     data = self.function_data(function, topic, key, value)
-                   
-                    function_directcall_url = functions.arguments(function).get('upstream_url')
                     
+                    log.debug('Invoking a function with data:' + str(data) )
                     
-                    if function_directcall_url:
-                        headers = {"Content-Type" : "application/json"}
-                        requests.post(str(function_directcall_url), data=data, headers=headers)
-                        log.debug('Direct function call url:' + str(function_directcall_url) + ' function:' + f'/function/{function["name"]}' + ' Data:' + data )
-                    else:
-                        functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
-                        log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
+                    functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                    log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + str(data) )
                 
                 # if auto commit not enabled, manually commit the messages
                 if not bool(os.getenv('ENABLE_AUTO_COMMIT', 'True')):
