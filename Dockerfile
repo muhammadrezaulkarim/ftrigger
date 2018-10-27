@@ -8,7 +8,7 @@ COPY ftrigger /usr/src/app/ftrigger
 ARG SETUP_COMMAND=install
 
 RUN   apk update \                                                                                                                                                                                                                        
-  &&  apk add ca-certificates wget \                                                                                                                                                                                                      
+  &&  apk add ca-certificates wget libc6-compat \                                                                                                                                                                                                      
   &&  update-ca-certificates \
   &&  pip install --upgrade pip 
 
