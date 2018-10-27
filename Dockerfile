@@ -10,7 +10,7 @@ ARG SETUP_COMMAND=install
 RUN   apk update \                                                                                                                                                                                                                        
   &&  apk add ca-certificates wget \                                                                                                                                                                                                      
   &&  update-ca-certificates \
-  &&  pip install --upgrade pip \
+  &&  pip install --upgrade pip 
 
 RUN wget https://files.pythonhosted.org/packages/dd/0a/c8bbf50a0b8e1d623521565e4c3211aebf7c9a7cf7eeb35b5360132a0ccc/confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl
 RUN mv confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl confluent_kafka-0.11.6-cp36-cp36m-linux_x86_64.whl
