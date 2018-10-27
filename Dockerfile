@@ -2,6 +2,7 @@ FROM mrkcse/docker-python-librdkafka
 
 RUN mkdir -p /usr/src/app
 WORKDIR /usr/src/app
+ENV LD_LIBRARY_PATH /usr/lib
 
 COPY setup.py /usr/src/app
 COPY ftrigger /usr/src/app/ftrigger
