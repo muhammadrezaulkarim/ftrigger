@@ -25,7 +25,7 @@ RUN apk add --no-cache --virtual .build-deps \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
     pip install kafka-python && \
-    python -c "from pip import pep425tags;print(pep425tags.supported_tags)" && \
+    python -c "import pip._internal; print(pip._internal.pep425tags.get_supported())" && \
     pip3 install confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl && \
     pip install multiprocessing-logging && \
     apk del .build-deps
