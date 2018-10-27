@@ -17,7 +17,7 @@ RUN apk add --no-cache --virtual .build-deps \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
     pip install kafka-python && \
-    pip install confluent-kafka==0.11.6 && \
+    pip install confluent-kafka && \
     pip install multiprocessing-logging && \
     apk del .build-deps
    
