@@ -2,7 +2,7 @@ version: '3.0'
 
 services:
   gateway:
-    image: functions/gateway:0.6.15
+    image: functions/gateway:0.6.16
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -21,7 +21,7 @@ services:
     image: mrkcse/ftrigger:latest
     command: kafka-trigger
     environment:
-      NUMBER_OF_CONSUMERS_PER_TOPIC: 20
+      NUMBER_OF_CONSUMERS_PER_TOPIC: 1
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MAX_POLL_RECORDS: 10000
       POLL_TIME_OUT: 1000
@@ -30,7 +30,7 @@ services:
       AUTO_COMMIT_INTERVAL_MS: 5000
       ENABLE_AUTO_COMMIT: 'True'
       FETCH_MAX_WAIT_MS: 100
-      AUTO_OFFSET_RESET: latest
+      AUTO_OFFSET_RESET: largest
     networks:
       - functions
       - streaming
@@ -76,7 +76,7 @@ services:
     labels:
       function: "true"
     environment:
-      fprocess: "python handler.py"
+      fprocess: "python index.py"
       write_debug: "true"
       no_proxy: "gateway"
       https_proxy: $https_proxy
@@ -130,7 +130,7 @@ services:
       - KAFKA_RESERVED_BROKER_MAX_ID=999999999
       - KAFKA_LOG_CLEANUP_POLICY=compact
       - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
-      - KAFKA_NUM_PARTITIONS=20
+      - KAFKA_NUM_PARTITIONS=1
     networks:
       - streaming
     deploy:
