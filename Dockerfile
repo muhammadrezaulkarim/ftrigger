@@ -14,6 +14,7 @@ RUN   apk update \
   && pip3 install --upgrade --user pip
 
 RUN wget https://files.pythonhosted.org/packages/dd/0a/c8bbf50a0b8e1d623521565e4c3211aebf7c9a7cf7eeb35b5360132a0ccc/confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl
+RUN mv confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl confluent_kafka-0.11.6-cp36-cp36m-linux_x86_64.whl
 
 RUN apk add --no-cache --virtual .build-deps \
         autoconf \
