@@ -12,7 +12,7 @@ RUN   apk update \
   &&   update-ca-certificates \
   && pip install --upgrade pip
 
-RUN wget https://files.pythonhosted.org/packages/df/93/c18e2633d770952e628e8a81dfa0ee5bbb23c342b37ad5eb3fdbb9f05d15/confluent_kafka-0.11.6-cp27-cp27m-manylinux1_x86_64.whl
+RUN wget https://files.pythonhosted.org/packages/dd/0a/c8bbf50a0b8e1d623521565e4c3211aebf7c9a7cf7eeb35b5360132a0ccc/confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl
 
 RUN apk add --no-cache --virtual .build-deps \
         autoconf \
@@ -24,7 +24,7 @@ RUN apk add --no-cache --virtual .build-deps \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
     pip install kafka-python && \
-    pip install confluent_kafka-0.11.6-cp27-cp27m-manylinux1_x86_64.whl && \
+    pip install confluent_kafka-0.11.6-cp36-cp36m-manylinux1_x86_64.whl && \
     pip install multiprocessing-logging && \
     apk del .build-deps
    
