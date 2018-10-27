@@ -3,7 +3,7 @@ from setuptools import setup
 
 
 install_requires = [
-    'confluent-kafka==0.11.4',
+    'confluent-kafka==0.11.6',
     'pyjq',
     'requests',
 ]
