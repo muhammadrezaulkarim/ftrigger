@@ -9,7 +9,7 @@ COPY ftrigger /usr/src/app/ftrigger
 ARG SETUP_COMMAND=install
 
 RUN   apk update \                                                                                                                                                                                                                        
-  &&  apk add ca-certificates wget libssl1.0\                                                                                                                                                                                                      
+  &&  apk add ca-certificates wget libssl1.0 \                                                                                                                                                                                                      
   &&  update-ca-certificates \
   &&  pip install --upgrade pip 
 
