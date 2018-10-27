@@ -23,7 +23,7 @@ RUN apk add --no-cache --virtual .build-deps \
         musl-dev && \
     python setup.py ${SETUP_COMMAND} && \
     pip install kafka-python && \
-    pip install confluent-kafka && \
+    pip install confluent_kafka-0.11.6-cp27-cp27m-manylinux1_x86_64.whl && \
     pip install multiprocessing-logging && \
     apk del .build-deps
    
